@@ -1,3 +1,7 @@
+/*
+This code is for an Arduino Pro mini, a DTH11 temperature and humidity sensor and a 240v relay. This will will be connected to a bathroom ventilation fan, this will convert from a timed fan to a fan that runs from a humidity sensor in the bathroom. In the initial version the humidity trigger value is set in software, my thinking is I will change this to a potentiometer in a subsequent version and have a space on the board for the pot.
+*/
+
 #include <DHT.h>
 #include <DHT_U.h>
 
@@ -10,7 +14,7 @@ DHT_Unified dht(DHTPIN, DHTTYPE);
 
 const int blinkDuration = 500;
 const int LEDInterval = 2500;
-const int targetHumidity = 50;
+const int targetHumidity = 50; // 50% humidity is the trigger value for this version of code - this will be moved to a pot?
 
 int sensorReadDelay = 10000;
 int sensorHumidity = 0;
@@ -83,12 +87,18 @@ void setup() {
 
 void loop() {
     // put your main code here, to run repeatedly:
-    currentMillis = millis();
-    updateLEDState();
-    switchLED();
-    readHumidity();
-    updateRelayState();
-    switchRelay();
+
+    /*
+    The code here isn't your usual Arduino style with delays. I have used the following guide for inspiration for moving away from Delays ->
+    https://forum.arduino.cc/index.php?topic=503368.0
+    */
+
+    currentMillis = millis(); // gets the vurrent millisecond value
+    updateLEDState(); // updates the LED state depending on the times and values above
+    switchLED(); // Sets the LED to the LED State
+    readHumidity(); // reads the current humidity
+    updateRelayState(); // updates the relay switch state, based on the values above
+    switchRelay(); // Sets the relay switch state
 
 }
 
