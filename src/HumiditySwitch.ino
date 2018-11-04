@@ -4,11 +4,12 @@ This code is for an Arduino Pro mini, a DTH11 temperature and humidity sensor an
 
 #include <DHT.h>
 #include <DHT_U.h>
+#include "../../../../../../.platformio/packages/framework-arduinoavr/cores/arduino/HardwareSerial.h"
 
 #define DHTTYPE           DHT11
-#define DHTPIN            13         // Pin which is connected to the DHT sensor.
+#define DHTPIN            10         // Pin which is connected to the DHT sensor.
 #define RELAYSWITCH       9         // Pin which is connected to the realy switch.
-#define LEDPIN            7
+#define LEDPIN            13
 
 DHT_Unified dht(DHTPIN, DHTTYPE);
 
@@ -16,13 +17,18 @@ const int blinkDuration = 500;
 const int LEDInterval = 2500;
 const int targetHumidity = 50; // 50% humidity is the trigger value for this version of code - this will be moved to a pot?
 
+
 int sensorReadDelay = 10000;
-int sensorHumidity = 0;
+int switchUpdateDelay = 30 * 1000;
+int sensorHumidity = 60;
+
 byte relaySwitchState = LOW;
+byte relayPreviousSwitchState = LOW;
 byte LEDState = LOW;
 unsigned long currentMillis = 0;
 unsigned long previousLEDMillis = 0;
 unsigned long previousSensorReadMillis = 0;
+unsigned long previousRelaySwitchMillis = 0;
 
 void setup() {
     Serial.begin(9600);
@@ -35,6 +41,7 @@ void setup() {
     Serial.println("------------------------------------");
     Serial.println("Humidity 240v Switch Setup");
 
+    delay(10000);
     // Initialize device.
     dht.begin();
 
@@ -105,9 +112,11 @@ void loop() {
 
 void switchFan() {
     if (relaySwitchState == LOW) {
+        Serial.println("** Fan Off **");
         digitalWrite(RELAYSWITCH, HIGH);
         relaySwitchState = HIGH;
     } else {
+        Serial.println("** Fam On **");
         digitalWrite(RELAYSWITCH, LOW);
         relaySwitchState = LOW;
     }
@@ -118,6 +127,7 @@ void readHumidity() {
         sensors_event_t event;
         dht.humidity().getEvent(&event);
         sensorHumidity = event.relative_humidity;
+        Serial.println(sensorHumidity);
         previousSensorReadMillis += sensorReadDelay;
     }
 }
@@ -151,7 +161,7 @@ void updateLEDState() {
 
 void updateRelayState() {
 
-    if (sensorHumidity >= targetHumidity && relaySwitchState == LOW) {
+    if (sensorHumidity >= targetHumidity) {
         relaySwitchState = HIGH;
     } else {
         relaySwitchState = LOW;
@@ -164,5 +174,14 @@ void switchLED() {
 }
 
 void switchRelay() {
-    digitalWrite(RELAYSWITCH, relaySwitchState);
+    if (currentMillis - previousRelaySwitchMillis >= switchUpdateDelay ) {
+        if (relaySwitchState != relayPreviousSwitchState) {
+            Serial.println("Set relay pin to ");
+            Serial.print(relaySwitchState);
+            Serial.println(".");
+            digitalWrite(RELAYSWITCH, relaySwitchState);
+            relayPreviousSwitchState = relaySwitchState;
+        }
+        previousRelaySwitchMillis += switchUpdateDelay;
+    }
 }
